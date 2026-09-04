@@ -1,0 +1,44 @@
+---
+title: "Popularity of the Name Samuel"
+format: html
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+# Get list of all yearly baby name data files
+files <- list.files("data", pattern = "^yob.*\\.txt$", full.names = TRUE)
+
+# Read all files and extract the year from the filename
+babies <- read_csv(
+  files,
+  id = "file",
+  col_names = c("name", "sex", "n"),
+  show_col_types = FALSE
+) |>
+  mutate(year = parse_number(file)) |>
+  select(-file)
+```
+
+```{r}
+# Filter for "Samuel" over the last 100 years
+samuel <- babies |>
+  filter(name == "Samuel", year >= max(year) - 99)
+
+samuel |>
+  ggplot(aes(x = year, y = n, color = sex)) +
+  geom_line() +
+  theme_minimal() +
+  labs(
+    title = "Popularity of the Name Samuel (Last 100 Years)",
+    x = "Year",
+    y = "Number of Babies",
+    color = "Sex"
+  )
+```
