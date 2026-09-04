@@ -9,6 +9,7 @@ execute:
 
 ```{r}
 library(tidyverse)
+library(plotly)
 ```
 
 ```{r}
@@ -29,16 +30,49 @@ babies <- read_csv(
 ```{r}
 # Filter for "Samuel" over the last 100 years
 samuel <- babies |>
-  filter(name == "Samuel", year >= max(year) - 99)
+  filter(name == "Samuel", year >= max(year) - 99) |>
+  mutate(Sex = if_else(sex == "M", "Male", "Female"))
 
-samuel |>
-  ggplot(aes(x = year, y = n, color = sex)) +
-  geom_line() +
-  theme_minimal() +
+p <- samuel |>
+  ggplot(aes(
+    x = year,
+    y = n,
+    color = Sex,
+    group = Sex,
+    text = paste0(
+      "Year: ", year, "<br>",
+      "Sex: ", Sex, "<br>",
+      "Babies: ", scales::comma(n)
+    )
+  )) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 0.8) +
+  scale_color_manual(values = c("Male" = "#1d3557", "Female" = "#e63946")) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "top",
+    panel.grid.minor = element_blank()
+  ) +
   labs(
     title = "Popularity of the Name Samuel (Last 100 Years)",
     x = "Year",
     y = "Number of Babies",
     color = "Sex"
   )
+
+ggplotly(p, tooltip = "text") |>
+  add_annotations(
+    x = 2007,
+    y = 13367,
+    text = "Born in 2007",
+    showarrow = TRUE,
+    arrowhead = 2,
+    ax = 40,
+    ay = -40
+  )
 ```
+
+Over the past century, the name Samuel remained fairly steady at roughly 3,000 to 5,000 male births per year from the 1920s through the 1970s. Beginning in the 1980s, its popularity climbed sharply, peaking in the early 2000s at nearly 15,000 births per year before gradually declining over the last two decades. This surge reflects a broader resurgence in traditional Old Testament and classic names in the late 20th century, while the recent downturn is consistent with greater name diversification and lower birth counts nationwide.
+
