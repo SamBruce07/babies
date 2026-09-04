@@ -76,3 +76,135 @@ ggplotly(p, tooltip = "text") |>
 
 Over the past century, the name Samuel remained fairly steady at roughly 3,000 to 5,000 male births per year from the 1920s through the 1970s. Beginning in the 1980s, its popularity climbed sharply, peaking in the early 2000s at nearly 15,000 births per year before gradually declining over the last two decades. This surge reflects a broader resurgence in traditional Old Testament and classic names in the late 20th century, while the recent downturn is consistent with greater name diversification and lower birth counts nationwide.
 
+## Names Ending in "L"
+
+```{r}
+# Calculate percentage and counts of names ending in L over the last 100 years
+l_trend <- babies |>
+  filter(year >= max(year) - 99) |>
+  mutate(ends_with_l = str_ends(name, regex("l", ignore_case = TRUE))) |>
+  group_by(year, sex) |>
+  summarize(
+    total_l = sum(n[ends_with_l]),
+    pct_l = 100 * total_l / sum(n),
+    .groups = "drop"
+  ) |>
+  mutate(Sex = if_else(sex == "M", "Male", "Female"))
+
+p_l <- l_trend |>
+  ggplot(aes(
+    x = year,
+    y = pct_l,
+    color = Sex,
+    group = Sex,
+    text = paste0(
+      "Year: ", year, "<br>",
+      "Sex: ", Sex, "<br>",
+      "Percentage: ", round(pct_l, 2), "%<br>",
+      "Total Babies: ", scales::comma(total_l)
+    )
+  )) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 0.8) +
+  scale_color_manual(values = c("Male" = "#1d3557", "Female" = "#e63946")) +
+  scale_y_continuous(labels = \(x) paste0(x, "%")) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "top",
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    title = "Percentage of Babies with Names Ending in 'L'",
+    x = "Year",
+    y = "Percentage of Births",
+    color = "Sex"
+  )
+
+ggplotly(p_l, tooltip = "text")
+```
+
+Names ending in "L" (such as Michael, Daniel, Paul, and Samuel) surged among boys during the mid-20th century, peaking in the 1960s at more than 10% of all male births before steadily falling. For girls, names ending in "L" (such as Carol, Cheryl, and Rachel) peaked between the 1940s and 1980s around 3.5% to 4%, and have since declined to around 2%.
+
+## Compare Any Name to Samuel
+
+```{r}
+# Top 30 most popular names over the last 100 years for the dropdown menu
+recent_babies <- babies |>
+  filter(year >= max(year) - 99)
+
+top_names <- recent_babies |>
+  filter(name != "Samuel") |>
+  group_by(name) |>
+  summarize(total = sum(n), .groups = "drop") |>
+  slice_max(total, n = 30) |>
+  arrange(name) |>
+  pull(name)
+
+# Baseline counts for Samuel
+samuel_counts <- recent_babies |>
+  filter(name == "Samuel") |>
+  group_by(year) |>
+  summarize(total = sum(n), .groups = "drop")
+
+p_dropdown <- plot_ly() |>
+  add_lines(
+    data = samuel_counts,
+    x = ~year,
+    y = ~total,
+    name = "Samuel",
+    line = list(color = "#1d3557", width = 3),
+    hoverinfo = "text",
+    text = ~paste0("Year: ", year, "<br>Name: Samuel<br>Total: ", scales::comma(total))
+  )
+
+# Add a trace for each candidate comparison name
+for (i in seq_along(top_names)) {
+  nm <- top_names[i]
+  df_nm <- recent_babies |>
+    filter(name == nm) |>
+    group_by(year) |>
+    summarize(total = sum(n), .groups = "drop")
+  
+  p_dropdown <- p_dropdown |>
+    add_lines(
+      data = df_nm,
+      x = ~year,
+      y = ~total,
+      name = nm,
+      visible = (i == 1),
+      line = list(color = "#e63946", width = 2),
+      hoverinfo = "text",
+      text = ~paste0("Year: ", year, "<br>Name: ", nm, "<br>Total: ", scales::comma(total))
+    )
+}
+
+# Create interactive dropdown buttons to toggle between names
+buttons <- lapply(seq_along(top_names), \(i) {
+  vis <- c(TRUE, rep(FALSE, length(top_names)))
+  vis[i + 1] <- TRUE
+  list(
+    method = "restyle",
+    args = list("visible", as.list(vis)),
+    label = top_names[i]
+  )
+})
+
+p_dropdown |>
+  layout(
+    title = list(text = "<b>Compare Name Popularity to Samuel (Last 100 Years)</b>"),
+    xaxis = list(title = "Year"),
+    yaxis = list(title = "Total Babies"),
+    updatemenus = list(
+      list(
+        y = 1.15,
+        x = 0.1,
+        xanchor = "left",
+        yanchor = "top",
+        active = 0,
+        buttons = buttons
+      )
+    )
+  )
+```
+
